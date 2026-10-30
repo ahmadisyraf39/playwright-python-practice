@@ -1,24 +1,30 @@
-from playwright.sync_api import sync_playwright, expect
+import re
+from playwright.sync_api import sync_playwright, expect, Page
+
+def login(page: Page, username: str, password: str):
+    page.goto("https://the-internet.herokuapp.com/login")
+    page.get_by_label("Username").fill(username)
+    page.get_by_label("Password").fill(password)
+    page.get_by_role("button", name="Login").click()
 
 with sync_playwright() as p:
 
     browser = p.chromium.launch(headless=False, slow_mo=500)
-    page = browser.new_page()
-    page.goto("https://the-internet.herokuapp.com/login")
 
-    # 1. Fill the username field
-    page.get_by_label("Username").fill("tomsmith")
+    # Run 1: correct credentials
+    context = browser.new_context()
+    page = context.new_page()
+    login(page, "tomsmith", "SuperSecretPassword!")
+    expect(page).to_have_url(re.compile(r".*/secure$"))
+    expect(page.get_by_text("You logged into a secure area!")).to_be_visible()
+    context.close()
 
-    # 2. Fill the password field
-    page.get_by_label("Password").fill("SuperSecretPassword!")
-
-    # 3. Click the Login button
-    page.get_by_role("button", name="Login").click()
-
-    # 4. Check you landed on the secure page (URL ends with /secure)
-    page.wait_for_url("https://the-internet.herokuapp.com/secure")
-
-    # 5. Check the success message "You logged into a secure area!" is shown
-    page.get_by_text("You logged into a secure area")
+    # Run 2: wrong password
+    context = browser.new_context()
+    page = context.new_page()
+    login(page, "tomsmith", "wrong-password")
+    expect(page).to_have_url(re.compile(r".*/login$"))
+    expect(page.get_by_text("Your password is invalid!")).to_be_visible()
+    context.close()
 
     browser.close()
