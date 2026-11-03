@@ -4,3 +4,4 @@ screenshots/
 test-results/
 auth.json
 *.png
+.pytest_cache/
